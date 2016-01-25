@@ -5,17 +5,35 @@ let exec = child_process.exec;
 let spawn = child_process.spawn;
 
 function shacheck(path: string, bs?: string, count?: string) {
-    return new Promise(function(resolve, reject) {
+    return new Promise<string>(function(resolve, reject) {
 
-if(bs&&count){
-            exec("dd if="+path+ " bs=" + bs + " count=" + count + " | sha1sum ", function(err, stdout, stderr) {
-            resolve(stdout);
-        });
-}else{
+        if (bs && count) {
+            exec("dd if=" + path + " bs=" + bs + " count=" + count + " | sha1sum ", function(err, stdout, stderr) {
+
+                if (err) {
+                    reject(err);
+                } else if (stderr) {
+                    reject(stderr);
+
+                } else {
+
+
+                    resolve(stdout.toString("utf-8"));
+                }
+            });
+        } else {
             exec("sha1sum " + path, function(err, stdout, stderr) {
-            resolve(stdout);
-        });
-}
+                if (err) {
+                    reject(err);
+                } else if (stderr) {
+                    reject(stderr);
+
+                } else {
+
+                    resolve(stdout.toString("utf-8"));
+                }
+            });
+        }
 
 
 
@@ -24,19 +42,16 @@ if(bs&&count){
     });
 }
 
-function clone(source, dest) {
-    return new Promise(function(resolve, reject) {
+export =function(source: string, dest: string) {
+    return new Promise<boolean>(function(resolve, reject) {
 
+        let disk: any = false;
 
-
-        let disk = false;
-
-
-        if (source.split("dev/") == 2) {
+        if (source.split("dev/").length == 2) {
 
             disk = source;
 
-        } else if (dest.split("dev/") == 2) {
+        } else if (dest.split("dev/").length == 2) {
             disk = dest;
         }
 
@@ -57,16 +72,28 @@ function clone(source, dest) {
 
 
                     exec(cmd, function(err, stdout, stderr) {
+                        if (err) {
+                            reject(err);
+                        } else if (stderr) {
+                            reject(stderr);
 
-                        shacheck(dest, bs, count).then(function(sha2) {
-                            if (sha1 == sha2) {
-                                resolve(true);
-                            } else {
-                                reject("sha don't match");
-                            }
+                        } else {
 
-                        });
+
+                            shacheck(dest, bs, count).then(function(sha2) {
+                                if (sha1 == sha2) {
+                                    resolve(true);
+                                } else {
+                                    reject("shasum don't match");
+                                }
+
+                            }).catch(function(err) {
+                                reject(err);
+                            });
+                        }
                     });
+                }).catch(function(err) {
+                    reject(err);
                 });
             });
 
@@ -81,16 +108,28 @@ function clone(source, dest) {
 
                 exec(cmd, function(err, stdout, stderr) {
 
-                    shacheck(dest).then(function(sha2) {
-                        if (sha1 == sha2) {
-                            resolve(true);
-                        } else {
-                            reject("sha don't match");
-                        }
+                    if (err) {
+                        reject(err);
+                    } else if (stderr) {
+                        reject(stderr);
 
-                    });
+                    } else {
 
+
+                        shacheck(dest).then(function(sha2) {
+                            if (sha1 == sha2) {
+                                resolve(true);
+                            } else {
+                                reject("shasum don't match");
+                            }
+
+                        }).catch(function(err) {
+                            reject(err);
+                        });
+                    }
                 });
+            }).catch(function(err) {
+                reject(err);
             });
         }
 
