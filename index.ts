@@ -15,7 +15,7 @@ function shacheck(path: string, bs?: number, count?: number) {
                     reject(err);
 
                 } else {
-                    console.log("shasum with blocks=" + stdout)
+
                     resolve(stdout.toString("utf-8"));
                 }
             });
@@ -27,7 +27,7 @@ function shacheck(path: string, bs?: number, count?: number) {
                     reject(stderr);
 
                 } else {
-                    console.log("shasum=" + stdout.toString("utf-8"))
+
                     resolve(stdout.toString("utf-8"));
                 }
             });
@@ -79,7 +79,7 @@ function diskbusysize(disk: string) {
                 let fdiskstring = stdout.toString("utf-8");
                 let fdisklines = fdiskstring.split("\n");
                 let bs = parseInt(fdisklines[2].replace(/ +(?= )/g, "").split(" ")[3]);
-                let count = parseInt(fdisklines[fdisklines.length - 2].replace(/ +(?= )/g, "").split(" ")[2])+1;
+                let count = parseInt(fdisklines[fdisklines.length - 2].replace(/ +(?= )/g, "").split(" ")[2]) + 1;
 
                 resolve((bs * count) / 1024);
 
@@ -91,7 +91,7 @@ function diskbusysize(disk: string) {
 
 function freespace(file: string) {
     return new Promise<number>(function(resolve, reject) {
-        let folder = file.replace("/" + file.split("/")[file.split("/").length - 1], "")
+        let folder = file.replace("/" + file.split("/")[file.split("/").length - 1], "");
         exec("df -k " + folder + "| tail -1 | awk {'print$(4)'}", function(err, stdout, stderr) {
             if (err) {
                 reject(err);
@@ -111,13 +111,13 @@ function checkspace(source: string, dest: string) {
     return new Promise<boolean>(function(resolve, reject) {
         if (source.split("dev/").length == 2) {
             diskbusysize(source).then(function(sourcesize) {
-                console.log("source size= " + sourcesize)
+                console.log("source size= " + sourcesize);
                 if (dest.split("dev/").length == 2) {
 
                     disksize(dest).then(function(sizedest) {
 
                         if (sourcesize < sizedest) {
-                            console.log("size ok")
+                            console.log("size ok");
                             resolve(true);
                         } else {
                             reject("insufficient space on " + dest);
@@ -132,7 +132,7 @@ function checkspace(source: string, dest: string) {
 
                     freespace(dest).then(function(sizedest) {
 
-                        console.log("free space is " + sizedest)
+                        console.log("free space is " + sizedest);
 
                         if (sourcesize < sizedest) {
                             resolve(true);
@@ -208,8 +208,8 @@ function umount_drive(disk) {
                     drives = drives + fdisklines[i] + " ";
                 }
 
-                if (fdisklines[0]!='') {
-                    console.log("umount partitions: "+drives)
+                if (fdisklines[0] != "") {
+                    console.log("umount partitions: " + drives);
                     exec("umount " + drives, function(err, stdout, stderr) {
                         if (err) {
                             reject(err);
@@ -267,7 +267,7 @@ function umountall(source: string, dest: string) {
 
 
 export =function(source: string, dest: string, progress?: Function) {
-    console.log("starting")
+    console.log("starting");
     return new Promise<boolean>(function(resolve, reject) {
         if (!source || !pathExists.sync(source)) {
             reject("missing source");
@@ -277,14 +277,14 @@ export =function(source: string, dest: string, progress?: Function) {
             reject("missing dest");
         } else {
 
-            console.log("file and disk exists")
+            console.log("file and disk exists");
 
 
             umountall(source, dest).then(function() {
-                console.log("checking space...")
+                console.log("checking space...");
                 checkspace(source, dest).then(function() {
 
-console.log("cloning...")
+                    console.log("cloning...");
 
                     if (source.split("dev/").length == 2) {
 
@@ -304,7 +304,7 @@ console.log("cloning...")
                                 let fdiskstring = stdout.toString("utf-8");
                                 let fdisklines = fdiskstring.split("\n");
                                 let bs = parseInt(fdisklines[2].replace(/ +(?= )/g, "").split(" ")[3]);
-                                let count = parseInt(fdisklines[fdisklines.length - 2].replace(/ +(?= )/g, "").split(" ")[2])+1;
+                                let count = parseInt(fdisklines[fdisklines.length - 2].replace(/ +(?= )/g, "").split(" ")[2]) + 1;
 
                                 let cmd = "dd if=" + source + " bs=" + bs + " count=" + count + " of=" + dest;
 
@@ -345,11 +345,11 @@ console.log("cloning...")
                         console.log(cmd);
 
                         shacheck(source).then(function(sha1) {
-                            console.log(sha1)
+                            console.log("shasum " + source + ": " + sha1);
                             exec(cmd, function(err, stdout, stderr) {
 
                                 if (err) {
-                                    console.log("error")
+
                                     reject(err);
 
                                 } else {
@@ -374,12 +374,12 @@ console.log("cloning...")
                                                 let count = parseInt(fdisklines[fdisklines.length - 2].replace(/ +(?= )/g, "").split(" ")[2]);
 
 
-                                                console.log("bs= " + bs)
-                                                console.log("count= " + count)
+                                                console.log("bs= " + bs);
+                                                console.log("count= " + count);
 
 
-                                                shacheck(dest, bs, count+1).then(function(sha2) {
-                                                    console.log(sha2)
+                                                shacheck(dest, bs, count + 1).then(function(sha2) {
+                                                    console.log("shasum " + dest + ": " + sha2);
                                                     if (sha1 == sha2) {
                                                         resolve(true);
                                                     } else {
@@ -402,7 +402,7 @@ console.log("cloning...")
                                     } else {
 
                                         shacheck(dest).then(function(sha2) {
-                                            console.log(sha2)
+                                            console.log("shasum " + dest + ": " + sha2);
                                             if (sha1 == sha2) {
                                                 resolve(true);
                                             } else {
