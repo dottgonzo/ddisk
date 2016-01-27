@@ -37,7 +37,7 @@ function shacheck(path: string, bs?: number, count?: number) {
 
 function filesize(file: string) {
     return new Promise<number>(function(resolve, reject) {
-        exec("ls -s " + file, function(err, stdout, stderr) {
+        exec("du -b " + file, function(err, stdout, stderr) {
             if (err) {
                 reject(err);
             } else if (stderr) {
@@ -52,7 +52,7 @@ function filesize(file: string) {
 
 function disksize(disk: string) {
     return new Promise<number>(function(resolve, reject) {
-        exec("echo $(( $(sudo fdisk " + disk + " -l | grep " + disk + ":| awk {'print($5)'}) / 1024 ))", function(err, stdout, stderr) {
+        exec("fdisk " + disk + " -l | grep " + disk + ":| awk {'print($5)'}", function(err, stdout, stderr) {
             if (err) {
                 reject(err);
             } else if (stderr) {
@@ -81,7 +81,7 @@ function diskbusysize(disk: string) {
                 let bs = parseInt(fdisklines[2].replace(/ +(?= )/g, "").split(" ")[3]);
                 let count = parseInt(fdisklines[fdisklines.length - 2].replace(/ +(?= )/g, "").split(" ")[2]) + 1;
 
-                resolve((bs * count) / 1024);
+                resolve(bs * count);
 
             }
         });
@@ -100,7 +100,7 @@ function freespace(file: string) {
 
             } else {
                 console.log(stdout);
-                resolve(parseInt(stdout.toString("utf-8")));
+                resolve(parseInt(stdout.toString("utf-8"))*1024);
             }
         });
     });
@@ -304,7 +304,7 @@ export =function(source: string, dest: string, progress?: Function) {
                                 let fdiskstring = stdout.toString("utf-8");
                                 let fdisklines = fdiskstring.split("\n");
                                 let bs = parseInt(fdisklines[2].replace(/ +(?= )/g, "").split(" ")[3]);
-                                let count = parseInt(fdisklines[fdisklines.length - 2].replace(/ +(?= )/g, "").split(" ")[2]) + 1;
+                                let count = parseInt(fdisklines[fdisklines.length - 2].replace(/ +(?= )/g, "").split(" ")[2]);
 
                                 let cmd = "dd if=" + source + " bs=" + bs + " count=" + count + " of=" + dest;
 
@@ -357,7 +357,7 @@ export =function(source: string, dest: string, progress?: Function) {
 
                                     if (dest.split("dev/").length == 2) {
 
-                                        exec("fdisk " + source + " -l", function(err, stdout, stderr) {
+                                        exec("fdisk " + dest + " -l", function(err, stdout, stderr) {
 
                                             if (err) {
                                                 reject(err);
@@ -366,19 +366,19 @@ export =function(source: string, dest: string, progress?: Function) {
 
                                             } else {
 
-
-
-                                                let fdiskstring = stdout.toString("utf-8");
+            filesize(source).then(function(sizesource) {
+                
+                                                               let fdiskstring = stdout.toString("utf-8");
                                                 let fdisklines = fdiskstring.split("\n");
                                                 let bs = parseInt(fdisklines[2].replace(/ +(?= )/g, "").split(" ")[3]);
-                                                let count = parseInt(fdisklines[fdisklines.length - 2].replace(/ +(?= )/g, "").split(" ")[2]);
+                                                let count = sizesource/bs;
 
 
                                                 console.log("bs= " + bs);
                                                 console.log("count= " + count);
 
 
-                                                shacheck(dest, bs, count + 1).then(function(sha2) {
+                                                shacheck(dest, bs, count).then(function(sha2) {
                                                     console.log("shasum " + dest + ": " + sha2);
                                                     if (sha1 == sha2) {
                                                         resolve(true);
@@ -391,6 +391,11 @@ export =function(source: string, dest: string, progress?: Function) {
                                                 });
 
 
+                
+          }).catch(function(err) {
+                                    reject(err);
+                                });
+ 
                                             }
 
                                         });
