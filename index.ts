@@ -288,12 +288,6 @@ export = function(source: string, dest: string, progress?: Function) {
                     if (source.split("dev/").length === 2) {
 
 
-
-
-
-
-
-
                         let CloneCmd = "dd if=" + source + " bs=" + disksource.block + " count=" + disksource.used_blocks + " of=" + dest;
 
                         console.log(CloneCmd);
