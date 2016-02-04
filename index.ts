@@ -75,7 +75,7 @@ function freespace(file: string) {
 
 
 function checkspace(source: string, dest: string) {
-    let lsdisks: IDisk[] = lsDisks();
+    let lsdisks = lsDisks.all();
     let diskdest: IDisk;
     let disksource: IDisk;
 
@@ -265,7 +265,7 @@ export = function(source: string, dest: string, progress?: Function) {
             reject("missing dest");
         } else {
 
-            let lsdisks: IDisk[] = lsDisks();
+            let lsdisks: IDisk[] = lsDisks.all();
             let diskdest: IDisk;
             let disksource: IDisk;
 
