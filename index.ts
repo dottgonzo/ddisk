@@ -95,7 +95,7 @@ function checkspace(source: string, dest: string) {
 
 
 
-                if (disksource.size < diskdest.size) {
+                if (disksource.used_blocks < diskdest.sectors) {
                     console.log("size ok");
                     resolve(true);
                 } else {
@@ -111,7 +111,7 @@ function checkspace(source: string, dest: string) {
 
                     console.log("free space is " + sizedest);
 
-                    if (disksource.size < sizedest) {
+                    if (disksource.used_blocks * disksource.block < sizedest) {
                         resolve(true);
                     } else {
                         reject("insufficient space on " + dest);
