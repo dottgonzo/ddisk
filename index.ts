@@ -2,6 +2,8 @@ import * as Promise from "bluebird";
 import * as pathExists from "path-exists";
 import * as child_process from "child_process";
 
+import lsDisks = require("ls-disks");
+
 let exec = child_process.exec;
 let spawn = child_process.spawn;
 
@@ -50,43 +52,8 @@ function filesize(file: string) {
     });
 }
 
-function disksize(disk: string) {
-    return new Promise<number>(function(resolve, reject) {
-        exec("fdisk " + disk + " -l | grep " + disk + ":| awk {'print($5)'}", function(err, stdout, stderr) {
-            if (err) {
-                reject(err);
-            } else if (stderr) {
-                reject(stderr);
-
-            } else {
-                resolve(parseInt(stdout.toString("utf-8")));
-            }
-        });
-    });
-}
-
-function diskbusysize(disk: string) {
-    return new Promise<number>(function(resolve, reject) {
-        exec("fdisk " + disk + " -l", function(err, stdout, stderr) { // get disk source size taking the last block of last partition
-            if (err) {
-                reject(err);
-            } else if (stderr) {
-                reject(stderr);
-
-            } else {
 
 
-                let fdiskstring = stdout.toString("utf-8");
-                let fdisklines = fdiskstring.split("\n");
-                let bs = parseInt(fdisklines[2].replace(/ +(?= )/g, "").split(" ")[3]);
-                let count = parseInt(fdisklines[fdisklines.length - 2].replace(/ +(?= )/g, "").split(" ")[2]) + 1;
-
-                resolve(bs * count);
-
-            }
-        });
-    });
-}
 
 
 function freespace(file: string) {
@@ -108,61 +75,65 @@ function freespace(file: string) {
 
 
 function checkspace(source: string, dest: string) {
+    let lsdisks: IDisk[] = lsDisks();
+    let diskdest: IDisk;
+    let disksource: IDisk;
+
+
+    for (let i = 0; i < lsdisks.length; i++) {
+        if (source === lsdisks[i].disk) {
+            disksource = lsdisks[i];
+        } else if (dest === lsdisks[i].disk) {
+            diskdest = lsdisks[i];
+        }
+    }
+
+
     return new Promise<boolean>(function(resolve, reject) {
-        if (source.split("dev/").length == 2) {
-            diskbusysize(source).then(function(sourcesize) {
-                console.log("source size= " + sourcesize);
-                if (dest.split("dev/").length == 2) {
-
-                    disksize(dest).then(function(sizedest) {
-
-                        if (sourcesize < sizedest) {
-                            console.log("size ok");
-                            resolve(true);
-                        } else {
-                            reject("insufficient space on " + dest);
-                        }
-
-                    }).catch(function(err) {
-                        reject(err);
-                    });
+        if (source.split("dev/").length === 2) {
+            if (dest.split("dev/").length === 2) {
 
 
+
+                if (disksource.size < diskdest.size) {
+                    console.log("size ok");
+                    resolve(true);
                 } else {
-
-                    freespace(dest).then(function(sizedest) {
-
-                        console.log("free space is " + sizedest);
-
-                        if (sourcesize < sizedest) {
-                            resolve(true);
-                        } else {
-                            reject("insufficient space on " + dest);
-                        }
-                    }).catch(function(err) {
-                        reject(err);
-                    });
+                    reject("insufficient space on " + dest);
                 }
 
 
-            }).catch(function(err) {
-                reject(err);
-            });
+
+
+            } else {
+
+                freespace(dest).then(function(sizedest) {
+
+                    console.log("free space is " + sizedest);
+
+                    if (disksource.size < sizedest) {
+                        resolve(true);
+                    } else {
+                        reject("insufficient space on " + dest);
+                    }
+                }).catch(function(err) {
+                    reject(err);
+                });
+            }
+
 
 
         } else {
             filesize(source).then(function(sizesource) {
 
-                if (dest.split("dev/").length == 2) {
-                    disksize(dest).then(function(sizedest) {
-                        if (sizesource < sizedest) {
-                            resolve(true);
-                        } else {
-                            reject("insufficient space on " + dest);
-                        }
-                    }).catch(function(err) {
-                        reject(err);
-                    });
+                if (dest.split("dev/").length === 2) {
+
+
+                    if (sizesource < diskdest.size) {
+                        resolve(true);
+                    } else {
+                        reject("insufficient space on " + dest);
+                    }
 
 
                 } else {
@@ -203,12 +174,12 @@ function umount_drive(disk) {
             } else {
                 let drives = "";
                 let fdiskstring = stdout.toString("utf-8");
-                var fdisklines = fdiskstring.split("\n");
-                for (var i = 0; i < fdisklines.length; i++) {
+                let fdisklines = fdiskstring.split("\n");
+                for (let i = 0; i < fdisklines.length; i++) {
                     drives = drives + fdisklines[i] + " ";
                 }
 
-                if (fdisklines[0] != "") {
+                if (fdisklines[0] !== "") {
                     console.log("umount partitions: " + drives);
                     exec("umount " + drives, function(err, stdout, stderr) {
                         if (err) {
@@ -233,9 +204,9 @@ function umount_drive(disk) {
 
 function umountall(source: string, dest: string) {
     return new Promise<boolean>(function(resolve, reject) {
-        if (source.split("dev/").length == 2) {
+        if (source.split("dev/").length === 2) {
             umount_drive(source).then(function() {
-                if (dest.split("dev/").length == 2) {
+                if (dest.split("dev/").length === 2) {
                     umount_drive(dest).then(function() {
                         resolve(true);
                     }).catch(function(err) {
@@ -248,7 +219,7 @@ function umountall(source: string, dest: string) {
                 reject(err);
             });
         } else {
-            if (dest.split("dev/").length == 2) {
+            if (dest.split("dev/").length === 2) {
                 umount_drive(dest).then(function() {
                     resolve(true);
                 }).catch(function(err) {
@@ -265,19 +236,49 @@ function umountall(source: string, dest: string) {
     });
 }
 
+interface IPartition {
+    partition: string;
+    sectors: number;
+    sectors_start: number;
+    sectors_stop: number;
+    type: string;
+    boot: boolean;
+    size: number;
+}
 
-export =function(source: string, dest: string, progress?: Function) {
+interface IDisk {
+    disk: string;
+    sectors: number;
+    size: number;
+    partitions: IPartition[];
+    block: number;
+}
+
+export = function(source: string, dest: string, progress?: Function) {
     console.log("starting");
     return new Promise<boolean>(function(resolve, reject) {
         if (!source || !pathExists.sync(source)) {
             reject("missing source");
         } else if (!dest) {
             reject("missing dest");
-        } else if (dest.split("dev/").length == 2 && !pathExists.sync(dest)) {
+        } else if (dest.split("dev/").length === 2 && !pathExists.sync(dest)) {
             reject("missing dest");
         } else {
 
-            console.log("file and disk exists");
+            let lsdisks: IDisk[] = lsDisks();
+            let diskdest: IDisk;
+            let disksource: IDisk;
+
+
+            for (let i = 0; i < lsdisks.length; i++) {
+                if (source === lsdisks[i].disk) {
+                    disksource = lsdisks[i];
+                } else if (dest === lsdisks[i].disk) {
+                    diskdest = lsdisks[i];
+                }
+            }
+
+
 
 
             umountall(source, dest).then(function() {
@@ -286,67 +287,55 @@ export =function(source: string, dest: string, progress?: Function) {
 
                     console.log("cloning...");
 
-                    if (source.split("dev/").length == 2) {
-
-
-                        exec("fdisk " + source + " -l", function(err, stdout, stderr) {
-
-
-                            if (err) {
-                                reject(err);
-                            } else if (stderr) {
-                                reject(stderr);
-
-                            } else {
+                    if (source.split("dev/").length === 2) {
 
 
 
-                                let fdiskstring = stdout.toString("utf-8");
-                                let fdisklines = fdiskstring.split("\n");
-                                let bs = parseInt(fdisklines[2].replace(/ +(?= )/g, "").split(" ")[3]);
-                                let count = parseInt(fdisklines[fdisklines.length - 2].replace(/ +(?= )/g, "").split(" ")[2]);
 
-                                let cmd = "dd if=" + source + " bs=" + bs + " count=" + count + " of=" + dest;
-
-                                console.log(cmd);
-
-                                shacheck(source, bs, count).then(function(sha1) {
-                                    exec(cmd, function(err, stdout, stderr) {
-                                        if (err) {
-                                            reject(err);
+                        let count = disksource.size / disksource.block;
 
 
-                                        } else {
 
+                        let CloneCmd = "dd if=" + source + " bs=" + disksource.block + " count=" + count + " of=" + dest;
 
-                                            shacheck(dest, bs, count).then(function(sha2) {
-                                                if (sha1 == sha2) {
-                                                    resolve(true);
-                                                } else {
-                                                    reject("shasum don't match");
-                                                }
+                        console.log(CloneCmd);
 
-                                            }).catch(function(err) {
-                                                reject(err);
-                                            });
-                                        }
-                                    });
-                                }).catch(function(err) {
+                        shacheck(source, disksource.block, count).then(function(sha1) {
+                            exec(CloneCmd, function(err, stdout, stderr) {
+                                if (err) {
                                     reject(err);
-                                });
-                            }
+
+
+                                } else {
+
+
+                                    shacheck(dest, disksource.block, count).then(function(sha2) {
+                                        if (sha1 === sha2) {
+                                            resolve(true);
+                                        } else {
+                                            reject("shasum don't match");
+                                        }
+
+                                    }).catch(function(err) {
+                                        reject(err);
+                                    });
+                                }
+                            });
+                        }).catch(function(err) {
+                            reject(err);
                         });
+
 
                     } else {
 
 
-                        let cmd = "dd if=" + source + " of=" + dest;
+                        let CloneCmd = "dd if=" + source + " of=" + dest;
 
-                        console.log(cmd);
+                        console.log(CloneCmd);
 
                         shacheck(source).then(function(sha1) {
                             console.log("shasum " + source + ": " + sha1);
-                            exec(cmd, function(err, stdout, stderr) {
+                            exec(CloneCmd, function(err, stdout, stderr) {
 
                                 if (err) {
 
@@ -355,50 +344,40 @@ export =function(source: string, dest: string, progress?: Function) {
                                 } else {
 
 
-                                    if (dest.split("dev/").length == 2) {
+                                    if (dest.split("dev/").length === 2) {
 
-                                        exec("fdisk " + dest + " -l", function(err, stdout, stderr) {
 
-                                            if (err) {
+                                        filesize(source).then(function(sizesource) {
+
+
+
+
+                                            let count = diskdest.size / diskdest.block;
+
+
+                                            console.log("bs= " + diskdest.block);
+                                            console.log("count= " + count);
+
+
+                                            shacheck(dest, diskdest.block, count).then(function(sha2) {
+                                                console.log("shasum " + dest + ": " + sha2);
+                                                if (sha1 === sha2) {
+                                                    resolve(true);
+                                                } else {
+                                                    reject("shasum don't match");
+                                                }
+
+                                            }).catch(function(err) {
                                                 reject(err);
-                                            } else if (stderr) {
-                                                reject(stderr);
-
-                                            } else {
-
-                                                filesize(source).then(function(sizesource) {
-
-                                                    let fdiskstring = stdout.toString("utf-8");
-                                                    let fdisklines = fdiskstring.split("\n");
-                                                    let bs = parseInt(fdisklines[2].replace(/ +(?= )/g, "").split(" ")[3]);
-                                                    let count = sizesource / bs;
-
-
-                                                    console.log("bs= " + bs);
-                                                    console.log("count= " + count);
-
-
-                                                    shacheck(dest, bs, count).then(function(sha2) {
-                                                        console.log("shasum " + dest + ": " + sha2);
-                                                        if (sha1 == sha2) {
-                                                            resolve(true);
-                                                        } else {
-                                                            reject("shasum don't match");
-                                                        }
-
-                                                    }).catch(function(err) {
-                                                        reject(err);
-                                                    });
+                                            });
 
 
 
-                                                }).catch(function(err) {
-                                                    reject(err);
-                                                });
-
-                                            }
-
+                                        }).catch(function(err) {
+                                            reject(err);
                                         });
+
+
 
 
 
@@ -408,7 +387,7 @@ export =function(source: string, dest: string, progress?: Function) {
 
                                         shacheck(dest).then(function(sha2) {
                                             console.log("shasum " + dest + ": " + sha2);
-                                            if (sha1 == sha2) {
+                                            if (sha1 === sha2) {
                                                 resolve(true);
                                             } else {
                                                 reject("shasum don't match");
