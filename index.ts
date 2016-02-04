@@ -121,8 +121,6 @@ function checkspace(source: string, dest: string) {
                 });
             }
 
-
-
         } else {
             filesize(source).then(function(sizesource) {
 
@@ -161,7 +159,6 @@ function checkspace(source: string, dest: string) {
         }
     });
 }
-
 
 function umount_drive(disk) {
     return new Promise<boolean>(function(resolve, reject) {
