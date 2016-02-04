@@ -252,6 +252,7 @@ interface IDisk {
     size: number;
     partitions: IPartition[];
     block: number;
+    used_blocks: number;
 }
 
 export = function(source: string, dest: string, progress?: Function) {
@@ -292,15 +293,15 @@ export = function(source: string, dest: string, progress?: Function) {
 
 
 
-                        let count = disksource.size / disksource.block;
 
 
 
-                        let CloneCmd = "dd if=" + source + " bs=" + disksource.block + " count=" + count + " of=" + dest;
+
+                        let CloneCmd = "dd if=" + source + " bs=" + disksource.block + " count=" + disksource.used_blocks + " of=" + dest;
 
                         console.log(CloneCmd);
 
-                        shacheck(source, disksource.block, count).then(function(sha1) {
+                        shacheck(source, disksource.block, disksource.used_blocks).then(function(sha1) {
                             exec(CloneCmd, function(err, stdout, stderr) {
                                 if (err) {
                                     reject(err);
@@ -309,7 +310,7 @@ export = function(source: string, dest: string, progress?: Function) {
                                 } else {
 
 
-                                    shacheck(dest, disksource.block, count).then(function(sha2) {
+                                    shacheck(dest, disksource.block, disksource.used_blocks).then(function(sha2) {
                                         if (sha1 === sha2) {
                                             resolve(true);
                                         } else {
@@ -352,14 +353,14 @@ export = function(source: string, dest: string, progress?: Function) {
 
 
 
-                                            let count = diskdest.size / diskdest.block;
+
 
 
                                             console.log("bs= " + diskdest.block);
-                                            console.log("count= " + count);
+                                            console.log("count= " + diskdest.used_blocks);
 
 
-                                            shacheck(dest, diskdest.block, count).then(function(sha2) {
+                                            shacheck(dest, diskdest.block, diskdest.used_blocks).then(function(sha2) {
                                                 console.log("shasum " + dest + ": " + sha2);
                                                 if (sha1 === sha2) {
                                                     resolve(true);
