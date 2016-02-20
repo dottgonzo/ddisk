@@ -283,17 +283,23 @@ export = function(source: string, dest: string, progress?: Function) {
                 console.log("checking space...");
                 checkspace(source, dest).then(function() {
 
-                    console.log("cloning...");
+
 
                     if (source.split("dev/").length === 2) {
 
 
                         let CloneCmd = "dd if=" + source + " bs=" + disksource.block + " count=" + disksource.used_blocks + " of=" + dest;
 
-                        console.log(CloneCmd);
+                        console.log("CloneCmd is " + CloneCmd);
+
+                        console.log("Sha1sum");
 
                         shacheck(source, disksource.block, disksource.used_blocks).then(function(sha1) {
+                            console.log("shasum " + source + ": " + sha1);
+                            console.log("cloning...");
+
                             exec(CloneCmd, function(err, stdout, stderr) {
+                                console.log("CloneCmd executed");
                                 if (err) {
                                     reject(err);
 
@@ -323,10 +329,14 @@ export = function(source: string, dest: string, progress?: Function) {
 
                         let CloneCmd = "dd if=" + source + " of=" + dest;
 
-                        console.log(CloneCmd);
 
+                        console.log("CloneCmd is " + CloneCmd);
+                        console.log("Sha1sum");
                         shacheck(source).then(function(sha1) {
+
                             console.log("shasum " + source + ": " + sha1);
+                            console.log("cloning...");
+
                             exec(CloneCmd, function(err, stdout, stderr) {
 
                                 if (err) {
@@ -355,8 +365,8 @@ export = function(source: string, dest: string, progress?: Function) {
 
 
 
-                                            console.log("bs= " + diskdest.block);
-                                            console.log("count= " + diskdest.used_blocks);
+                                            console.log("sha1sum " + dest + " bs= " + diskdest.block + " count= " + diskdest.used_blocks);
+
 
 
                                             shacheck(dest, diskdest.block, diskdest.used_blocks).then(function(sha2) {
