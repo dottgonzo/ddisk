@@ -345,11 +345,9 @@ export = function(source: string, dest: string, progress?: Function) {
                                             lsdisks = lsDisks.all();
 
                                             for (let i = 0; i < lsdisks.length; i++) {
-                                                if (source === lsdisks[i].disk) {
-                                                    disksource = lsdisks[i];
-                                                } else if (dest === lsdisks[i].disk) {
-                                                    diskdest = lsdisks[i];
-                                                }
+
+                                                diskdest = lsdisks[i];
+
                                             }
 
 
